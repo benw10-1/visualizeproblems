@@ -3,7 +3,7 @@ function nodeRender(target, data) {
     let offset = {
         x: width/2,
         y: height/2,
-        scale: 1.5,
+        scale: 1,
         mouse: [left, top]
     }
 
@@ -20,7 +20,7 @@ function nodeRender(target, data) {
 
     let nodes, links, nodeMap, 
     context = targetCanv.getContext("2d"), 
-    nodeSize = 20, 
+    nodeSize = data.nodesize ?? 20, 
     dragging = false
 
     window.requestAnimationFrame(() => {
@@ -40,7 +40,7 @@ function nodeRender(target, data) {
     }
 
     function convertDrawCoord(coord) {
-        return [coord[0] * offset.scale + offset.x, -coord[1] * offset.scale + offset.y]
+        return [(coord[0] + offset.x) * offset.scale, (-coord[1] + offset.y) * offset.scale]
     }
 
     function initData(data) {
@@ -56,6 +56,8 @@ function nodeRender(target, data) {
 
             link.p2 = [nodeMap[link.target.id ?? link.target].x, nodeMap[link.target.id ?? link.target].y]
         })
+
+        nodeSize = data.nodesize ?? 20
     }
 
     function setCenter(x, y) {
@@ -96,12 +98,12 @@ function nodeRender(target, data) {
 
         text = String(text)
 
-        let texth = 12 * offset.scale
+        let texth = 22 * offset.scale
         let maxw = 20 * offset.scale
         context.font = texth + "px serif"
 
-        center = [center[0] - text.length * 3 * offset.scale, center[1] + texth/4]
-
+        center = [center[0], center[1] + texth/4]
+        context.textAlign = 'center';
         context.fillText(text, center[0], center[1], maxw)
     }
 
@@ -138,7 +140,7 @@ function nodeRender(target, data) {
                 return [l1, l2] 
             }
 
-            let [v1, v2, p] = [v1[0], v1[0], v2]
+            [v1, v2, p] = [v1[0], v1[0], v2]
             return v1 + p * (v1 - v2)
         }
         return v1 + p * (v1 - v2)
@@ -148,7 +150,7 @@ function nodeRender(target, data) {
 
     window.addEventListener("resize", updateSize)
     targetCanv.addEventListener("wheel", (event) => {
-        offset.scale += event.deltaY * -.005
+        offset.scale += event.deltaY * -.0005
 
         let clamped = Math.min(5, Math.max(offset.scale, .5))
         if (clamped !== offset.scale) {
@@ -156,13 +158,14 @@ function nodeRender(target, data) {
             return
         }
         offset.scale = clamped
+        
+        // if (event.deltaY < 0) {
+        //     let [x, y] = getMouseActual([event.clientX, event.clientY])
 
-        let [x, y] = getMouseActual([event.clientX, event.clientY])
-
-        if (event.deltaY < 0) {
-            offset.x = lerped(offset.x, x, .2)
-            offset.y = lerped(offset.y, y, .2)
-        }
+        //     let lerpd = lerped([offset.x, offset.y], [x, y], .5)
+        //     offset.x = lerpd[0]
+        //     offset.y = lerpd[1]
+        // }
     })
     targetCanv.addEventListener("mousedown", (event) => {
         let last
@@ -179,8 +182,8 @@ function nodeRender(target, data) {
                 return
             }
             let [dx, dy] = [x - last[0], y - last[1]]
-            offset.x = original[0] + dx
-            offset.y = original[1] + dy
+            offset.x = original[0] + dx/offset.scale
+            offset.y = original[1] + dy/offset.scale
         }
 
         const enddrag = (event) => {
