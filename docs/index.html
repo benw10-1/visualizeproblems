@@ -21,11 +21,24 @@
     <div class="main">
         <div class="header">
             <div class="header-cont">
-                <div class="head-but selected">Binary Search</div>
-            </div>
-            <div class="slidecontainer">
-                <label for="slider" id="nodelabel">Number of nodes: </label>
-                <input type="range" min="1" max="100" value="15" class="slider" id="slider" name="slider">
+                <div class="mode">
+                    <div class="head-but selected" id="bin" onclick="setM(event)">Binary Tree</div>
+                    <!-- <div class="head-but selected">Random Tree</div> -->
+                </div>
+                <div class="search-type">
+                    <div class="head-but selected" id="in" onclick="setM(event)">Inorder</div>
+                    <!-- <div class="head-but" id="pre" onclick="setM(event)">Preorder</div>
+                    <div class="head-but" id="post" onclick="setM(event)">Postorder</div>
+                    <div class="head-but" id="level" onclick="setM(event)">Level Order</div> -->
+                </div>
+                <div class="search">
+                    <input type="number" class="num" name="num" id="searchnum">
+                    <div class="head-but selected" id="searchBut">Search for value</div>
+                </div>
+                <div class="slidecontainer">
+                    <label for="slider" id="nodelabel">Number of nodes: </label>
+                    <input type="range" min="1" max="255" value="15" class="slider" id="slider" name="slider">
+                </div>
             </div>
         </div>
         <div id="graph"></div>

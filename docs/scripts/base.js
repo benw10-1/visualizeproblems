@@ -1,4 +1,4 @@
-var graphEl, slider
+var graphEl, slider, searchEl, mode, order, searched, trees, ani
 
 const colorScheme = ["#E63946", "#1D3557", "#A8DADC", "#F1FAEE"]
 const keysExp = /(Backspace)|(Escape)|(Control)|\s/
@@ -15,6 +15,28 @@ class BinaryTreeNode {
         this.val = val
         this.left = left
         this.right = right
+    }
+}
+
+const traversers = {
+    "bin": {
+        "in": function (node, val, inst) {
+            const helper = (node, val, inst) => {
+                if (!node) return false
+                if (node.val === val) {
+                    inst.push({ flag: "found", id: node.val })
+                    return true
+                }
+                inst.push({ flag: "traversed", id: node.val })
+                let res
+                if (val < node.val) res = helper(node.children[0], val, inst)
+                if (val > node.val) res = helper(node.children[1], val, inst)
+                if (res) inst.push({ flag: "found", id: node.val })
+                else inst.push({ flag: "traversed", id: node.val })
+                return res
+            }
+            return helper(node, val, inst)
+        }
     }
 }
 
@@ -105,22 +127,97 @@ function renderTree(root) {
     }
 }
 
+function genRand(r1, r2) {
+    let diff = r2 - r1
+    return Math.floor(diff * Math.random() + r1)
+}
+
+function setM(event) {
+    event.target.parentElement.querySelector(".selected").className = "head-but"
+    event.target.classList.add("selected")
+    
+    let [mode, order] = document.querySelectorAll(".head-but.selected")
+    mode =  mode.id
+    order = order.id
+    console.log(mode, order, searchEl.value)
+}
+
+function searchFor(id, tree) {
+    let inst = []
+    traversers[mode][order](tree, id, inst)
+    return inst
+}
+
+async function playAni(renderer, inst) {
+    if (ani) return
+    ani = true
+
+    async function delay(ms) {
+        return new Promise((res) => {setTimeout(res, ms)})
+    }
+
+    let hnodes = renderer.getHighlight()
+
+    for (const item of inst) {
+        let d = 1000
+        let { flag, id } = item
+
+        let node = renderer.getNode(id)
+
+        hnodes.clear()
+
+        switch(flag) {
+            case "found":
+                hnodes.add(id)
+                node.visited = true
+                break;
+            case "traversed":
+                d /= 4
+                hnodes.add(id)
+                node.traversed = true
+                break;
+            default:
+                break;
+        }
+
+        await delay(d)
+    }
+    ani = false
+}
+
 function loadEls() {
     graphEl = document.getElementById("graph")
     slider = document.getElementById("slider")
+    searchEl = document.getElementById("searchnum")
+
+    let searchBut = document.getElementById("searchBut")
     let nodelabel = document.getElementById("nodelabel")
 
+    trees = {}
+
     let perf = genPerfectBinTree()
+    trees.bin = perf
     let rendered = renderTree(perf)
     let renderer = nodeRender(graphEl)
     renderer.initData(rendered)
+    mode = "bin"
+    order = "in"
+
+    searchEl.value = genRand(1, 16)
 
     slider.addEventListener("input", (event) => {
+        renderer.clearExtra()
         nodelabel.innerHTML = "Number of nodes: " + slider.value
         let newTree = genPerfectBinTree(Number(slider.value))
+        trees.bin = newTree
         renderer.initData(renderTree(newTree))
-        
     })
+    searchBut.addEventListener("click", (event) => {
+        renderer.clearExtra()
+        let s = searchFor(Number(searchEl.value), trees[mode])
+        playAni(renderer, s)
+    })
+
     nodelabel.innerHTML = "Number of nodes: " + slider.value
 }
 

@@ -20,27 +20,33 @@ function nodeRender(target, data) {
 
     let nodes, links, nodeMap, 
     context = targetCanv.getContext("2d"), 
-    nodeSize = data.nodesize ?? 20, 
-    dragging = false
+    nodeSize = data.nodesize ?? 20,
+    hNodes = new Set()
+
+    let ncolor = "red"
+    let hcolor = "blue"
+    let traversed = "grey"
+    let visited = "green"
 
     window.requestAnimationFrame(() => {
         draw(Date.now())
     })
 
     function updateSize() {
-        width = target.getBoundingClientRect().width
-        height = target.getBoundingClientRect().height
+        let rect = target.getBoundingClientRect()
+
         offset = {
-            x: width/2,
-            y: height/2,
+            x: rect.width/2,
+            y: rect.height/2,
             scale: offset.scale ?? 1,
+            mouse: [rect.left, rect.top]
         }
         targetCanv.width = width
         targetCanv.height = height
     }
 
     function convertDrawCoord(coord) {
-        return [(coord[0] + offset.x) * offset.scale, (-coord[1] + offset.y) * offset.scale]
+        return [(coord[0] * offset.scale + offset.x) , (offset.y - coord[1] * offset.scale) ]
     }
 
     function initData(data) {
@@ -71,13 +77,13 @@ function nodeRender(target, data) {
         }
     }
 
-    function drawCircle(center, r) {
+    function drawCircle(center, r, color) {
         center = convertDrawCoord(center)
 
+        context.fillStyle = color
         context.lineWidth = 1
         context.beginPath()
         context.arc(center[0], center[1], r, 0, 2 * Math.PI)
-        context.fillStyle = "red"
         context.fill()
         context.fillStyle = "black"
     }
@@ -118,7 +124,18 @@ function nodeRender(target, data) {
 
         for (const x of nodes) {
             let center = [x.x, x.y]
-            drawCircle(center, nodeSize * offset.scale)
+            if (hNodes.has(x.id)) {
+                drawCircle(center, (nodeSize + nodeSize * .2) * offset.scale, hcolor)
+            }
+            if (x.visited) {
+                drawCircle(center, nodeSize * offset.scale, visited)
+            }
+            else if (x.traversed) {
+                drawCircle(center, nodeSize * offset.scale, traversed)
+            }
+            else {
+                drawCircle(center, nodeSize * offset.scale, ncolor)
+            }
             if (x.label) drawText(center, x.label)
         }
 
@@ -131,7 +148,7 @@ function nodeRender(target, data) {
         return [pos[0] + offset.mouse[0], pos[1] + offset.mouse[1]]
     } 
 
-    function lerped(v1, v2, p) {
+    function lerp(v1, v2, p) {
         if (v1[0] && v1[1]) {
             if (v2[0] && v2[1]) {
                 let l1 = v1[0] + p * (v1[0] - v1[1]) 
@@ -146,11 +163,29 @@ function nodeRender(target, data) {
         return v1 + p * (v1 - v2)
     }
 
+    function getHighlight() {
+        return hNodes
+    }
+
+    function clearExtra() {
+        hNodes.clear()
+
+        nodes.forEach(e => {
+            delete e.traversed
+            delete e.visited
+        })
+    }
+
+    function getNode(id) {
+        return nodeMap[id]
+    }
+
     initData(data)
 
     window.addEventListener("resize", updateSize)
     targetCanv.addEventListener("wheel", (event) => {
-        offset.scale += event.deltaY * -.0005
+        event.preventDefault()
+        offset.scale += event.deltaY * -.001
 
         let clamped = Math.min(5, Math.max(offset.scale, .5))
         if (clamped !== offset.scale) {
@@ -161,10 +196,9 @@ function nodeRender(target, data) {
         
         // if (event.deltaY < 0) {
         //     let [x, y] = getMouseActual([event.clientX, event.clientY])
-
-        //     let lerpd = lerped([offset.x, offset.y], [x, y], .5)
-        //     offset.x = lerpd[0]
-        //     offset.y = lerpd[1]
+        //     console.log(x, lerp(x, width/2, .5))
+        //     offset.x += (x - lerp(x, width/2, .5))/offset.scale
+        //     offset.y += (y - lerp(y, height/2, .5))/offset.scale
         // }
     })
     targetCanv.addEventListener("mousedown", (event) => {
@@ -182,8 +216,8 @@ function nodeRender(target, data) {
                 return
             }
             let [dx, dy] = [x - last[0], y - last[1]]
-            offset.x = original[0] + dx/offset.scale
-            offset.y = original[1] + dy/offset.scale
+            offset.x = original[0] + dx//(offset.scale -.1)
+            offset.y = original[1] + dy//(offset.scale -.1)
         }
 
         const enddrag = (event) => {
@@ -200,6 +234,9 @@ function nodeRender(target, data) {
 
     return {
         setCenter,
-        initData
+        initData,
+        getHighlight,
+        getNode,
+        clearExtra
     }
 }
