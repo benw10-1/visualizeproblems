@@ -1,15 +1,5 @@
-# Traverse Wikipeida
-A simple tool for building relational graphs of arbitrary Wikipedia pages. Page x is related to page y if page x has link y in its text. I use the Wikimedia API to get this information.
+# Visualize Problems
+This web application visualizes tree data structures, and the algorithms used for searching and traversing them. I use my own custom rendering engine to render the connections, animations, and nodes onto a canvas element. I also coded all of the node generation and traversion algorithms. I plan to implement a visualization for many Leetcode-like problems as well as the code for the solution to said problems.
 
 ## Usage
-Search a Wikipedia page name in the top search bar and wait for the pages to load.
-
-## Future features
--Create massive database with preprocessed page traversion.<br>
--Add NLP relationships (find relationship in link sentence)<br>
--Make graph more customizable (change depth, max child nodes, colors...)<br>
--More interactive map and able to search page from map node<br>
--Better resolve if link is redirect
-
-## Page
-Visit the [page!](https://benw10-1.github.io/traverseWikipedia/)
+Go to [my page!](https://benw10-1.github.io/visualizeproblems/)
