@@ -182,6 +182,7 @@ async function playAni(renderer, inst) {
 
         await delay(d)
     }
+    hnodes.clear()
     ani = false
 }
 
