@@ -24,15 +24,16 @@ const traversers = {
             const helper = (node, val, inst) => {
                 if (!node) return false
                 if (node.val === val) {
-                    inst.push({ flag: "found", id: node.val })
+                    inst.push({ flag: "visited", id: node.val })
+                    inst.push({ flag: "returned", id: node.val, res: true })
                     return true
                 }
                 inst.push({ flag: "traversed", id: node.val })
                 let res
                 if (val < node.val) res = helper(node.children[0], val, inst)
                 if (val > node.val) res = helper(node.children[1], val, inst)
-                if (res) inst.push({ flag: "found", id: node.val })
-                else inst.push({ flag: "traversed", id: node.val })
+                inst.push({ flag: "visited", id: node.val })
+                inst.push({ flag: "returned", id: node.val, res })
                 return res
             }
             return helper(node, val, inst)
@@ -67,8 +68,8 @@ function renderTree(root) {
     
     let nodes = []
     let links = []
-    let leveldiff = 60
-    let size = 40
+    let size = 30
+    let leveldiff = size * 4
     let maxlevel = -1
     let nodeMap = {}
 
@@ -96,7 +97,7 @@ function renderTree(root) {
         })
 
         maxlevel = Math.max(level, maxlevel)
-        return (space === 0) ? size : space
+        return (space === 0) ? size * 1.5 : space
     }
 
     function second(node, offset) {
@@ -160,21 +161,25 @@ async function playAni(renderer, inst) {
 
     for (const item of inst) {
         let d = 1000
-        let { flag, id } = item
+        let { flag, id, res } = item
 
         let node = renderer.getNode(id)
 
         hnodes.clear()
 
         switch(flag) {
-            case "found":
+            case "visited":
                 hnodes.add(id)
                 node.visited = true
                 break;
             case "traversed":
-                d /= 4
+                d /= 8
                 hnodes.add(id)
                 node.traversed = true
+                break;
+            case "returned":
+                d = 0
+                renderer.addText(id, String(res))
                 break;
             default:
                 break;

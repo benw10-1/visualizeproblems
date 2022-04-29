@@ -3,7 +3,7 @@ function nodeRender(target, data) {
     let offset = {
         x: width/2,
         y: height/2,
-        scale: 1,
+        scale: 1.5,
         mouse: [left, top]
     }
 
@@ -21,7 +21,8 @@ function nodeRender(target, data) {
     let nodes, links, nodeMap, 
     context = targetCanv.getContext("2d"), 
     nodeSize = data.nodesize ?? 20,
-    hNodes = new Set()
+    hNodes = new Set(),
+    linkText = {}
 
     let ncolor = "red"
     let hcolor = "blue"
@@ -99,18 +100,18 @@ function nodeRender(target, data) {
         context.stroke()
     }
 
-    function drawText(center, text) {
+    function drawText(center, text, mw=20, align="center") {
         center = convertDrawCoord(center)
 
         text = String(text)
 
         let texth = 22 * offset.scale
-        let maxw = 20 * offset.scale
+        let maxw = mw * offset.scale
         context.font = texth + "px serif"
 
-        center = [center[0], center[1] + texth/4]
-        context.textAlign = 'center';
-        context.fillText(text, center[0], center[1], maxw)
+        if (align === "center") center = [center[0], center[1] + texth/4]
+        context.textAlign = align
+        context.fillText(text, center[0], center[1], mw ? maxw : undefined)
     }
 
     function draw(t) {
@@ -120,6 +121,20 @@ function nodeRender(target, data) {
 
         for (const x of links) {
             drawLine(x.p1, x.p2, 3 * offset.scale)
+            let { target, source } = x
+            let txt = linkText[target.id ?? target]
+            // console.log(txt)
+            if (txt) {
+                target = nodeMap[target]
+                source = nodeMap[source]
+                let c = [lerp(target.x, source.x, .5) - 5, lerp(target.y, source.y, .5)]
+                let a = "end"
+                if (c[0] < target.x) {
+                    a = "start"
+                    c[0] += 10
+                }
+                drawText(c, txt, false, a)
+            }
         }
 
         for (const x of nodes) {
@@ -151,18 +166,17 @@ function nodeRender(target, data) {
     function lerp(v1, v2, p) {
         if (v1[0] && v1[1]) {
             if (v2[0] && v2[1]) {
-                let l1 = v1[0] + p * (v1[0] - v1[1]) 
-                let l2 = v2[0] + p * (v2[0] - v2[1]) 
+                let l1 = v1[0] * (1 - p) + v1[1] * p 
+                let l2 = v2[0] * (1 - p) + v2[1] * p  
 
                 return [l1, l2] 
             }
 
             [v1, v2, p] = [v1[0], v1[0], v2]
-            return v1 + p * (v1 - v2)
+            return v1 * (1 - p) + v2 * p
         }
-        return v1 + p * (v1 - v2)
+        return v1 * (1 - p) + v2 * p
     }
-
     function getHighlight() {
         return hNodes
     }
@@ -174,10 +188,15 @@ function nodeRender(target, data) {
             delete e.traversed
             delete e.visited
         })
+        linkText = {}
     }
 
     function getNode(id) {
         return nodeMap[id]
+    }
+
+    function addText(target, txt) {
+        linkText[target.id ?? target] = txt
     }
 
     initData(data)
@@ -237,6 +256,7 @@ function nodeRender(target, data) {
         initData,
         getHighlight,
         getNode,
-        clearExtra
+        clearExtra,
+        addText
     }
 }
