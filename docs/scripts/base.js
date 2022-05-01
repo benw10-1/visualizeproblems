@@ -130,7 +130,9 @@ const traversers = {
                     res = true
                     break
                 }
-                for (const x of node.children) q.push(x)
+                for (const x of node.children) {
+                    if (x) q.push(x)
+                }
             }
             return res
         }
