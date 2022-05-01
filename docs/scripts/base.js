@@ -59,7 +59,10 @@ const traversers = {
                         break
                     }
                 }
-                if (node.children.length < 1) inst.push({ flag: "visited", id: node.val })
+                if (node.children.length < 1) {
+                    res = node.val === val
+                    inst.push({ flag: "visited", id: node.val })
+                }
                 inst.push({ flag: "returned", id: node.val, res })
                 return res
             }
