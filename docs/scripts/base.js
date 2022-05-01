@@ -272,8 +272,8 @@ function setM(event) {
     
     let [m, o] = document.querySelectorAll(".head-but.selected")
     if (mode !== m.id) {
-        if (mode === "rand") currentTree = genPerfectBinTree(Number(slider).value)
-        else currentTree = genRandTree(Number(slider).value)
+        if (mode === "rand") currentTree = genPerfectBinTree(Number(slider.value))
+        else currentTree = genRandTree(Number(slider.value))
     }
     mode =  m.id
     order = o.id
