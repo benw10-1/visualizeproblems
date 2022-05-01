@@ -22,14 +22,17 @@
         <div class="header">
             <div class="header-cont">
                 <div class="mode">
-                    <div class="head-but selected" id="bin" onclick="setM(event)">Binary Tree</div>
-                    <!-- <div class="head-but selected">Random Tree</div> -->
+                    <div class="head-but selected" id="bin" onclick="setM(event)">Perfect Binary</div>
+                    <div class="head-but" id="rand" onclick="setM(event)">Random Values</div>
                 </div>
                 <div class="search-type">
-                    <div class="head-but selected" id="in" onclick="setM(event)">Inorder</div>
-                    <!-- <div class="head-but" id="pre" onclick="setM(event)">Preorder</div>
-                    <div class="head-but" id="post" onclick="setM(event)">Postorder</div>
-                    <div class="head-but" id="level" onclick="setM(event)">Level Order</div> -->
+                    <div class="drop-anch">
+                        <div class="head-but selected" id="in" onclick="setM(event)">Inorder</div>
+                        <div class="head-but" id="pre" onclick="setM(event)">Preorder</div>
+                        <div class="head-but" id="post" onclick="setM(event)">Postorder</div>
+                        <div class="head-but" id="level" onclick="setM(event)">Level Order</div>
+                    </div>
+                    
                 </div>
                 <div class="search">
                     <input type="number" class="num" name="num" id="searchnum">

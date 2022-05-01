@@ -18,11 +18,12 @@ function nodeRender(target, data) {
     targetCanv.height = height
     target.appendChild(targetCanv)
 
-    let nodes, links, nodeMap, 
+    let nodes = [], links = [], nodeMap = {}, 
     context = targetCanv.getContext("2d"), 
     nodeSize = data.nodesize ?? 20,
     hNodes = new Set(),
-    linkText = {}
+    linkText = {},
+    staticLabels = []
 
     let ncolor = "red"
     let hcolor = "blue"
@@ -33,8 +34,17 @@ function nodeRender(target, data) {
         draw(Date.now())
     })
 
+    function getFixedCenter() {
+        return [width/2, height/2]
+    }
+
     function updateSize() {
         let rect = target.getBoundingClientRect()
+
+        width = rect.width
+        height = rect.height
+        top = rect.top
+        left = rect.left
 
         offset = {
             x: rect.width/2,
@@ -42,8 +52,8 @@ function nodeRender(target, data) {
             scale: offset.scale ?? 1,
             mouse: [rect.left, rect.top]
         }
-        targetCanv.width = width
-        targetCanv.height = height
+        targetCanv.width = rect.width
+        targetCanv.height = rect.width
     }
 
     function convertDrawCoord(coord) {
@@ -54,7 +64,6 @@ function nodeRender(target, data) {
         nodeMap = {}
         nodes = data.nodes ?? []
         links = data.links ?? []
-
         nodes.forEach(node => {
             nodeMap[node.id] = node
         })
@@ -65,17 +74,15 @@ function nodeRender(target, data) {
         })
 
         nodeSize = data.nodesize ?? 20
+        // console.log(nodes, links)
     }
 
     function setCenter(x, y) {
-        if (x[0] && x[1]) {
-            offset.x = x[0]
-            offset.y = x[1]
-        }
-        else {
-            offset.x = x
-            offset.y = y
-        }
+        let coord
+        if (x[0] && x[1]) coord = x
+        else coord = [x, y]
+        offset.x = coord[0]
+        offset.y = coord[1]
     }
 
     function drawCircle(center, r, color) {
@@ -100,7 +107,7 @@ function nodeRender(target, data) {
         context.stroke()
     }
 
-    function drawText(center, text, mw=20, align="center") {
+    function drawText(center, text, mw=20, align="center", color="#F1FAEE") {
         center = convertDrawCoord(center)
 
         text = String(text)
@@ -109,9 +116,13 @@ function nodeRender(target, data) {
         let maxw = mw * offset.scale
         context.font = texth + "px serif"
 
-        if (align === "center") center = [center[0], center[1] + texth/4]
+        context.fillStyle = color
+
+        context.textBaseline = 'middle'
         context.textAlign = align
         context.fillText(text, center[0], center[1], mw ? maxw : undefined)
+
+        context.fillStyle = "black"
     }
 
     function draw(t) {
@@ -123,17 +134,21 @@ function nodeRender(target, data) {
             drawLine(x.p1, x.p2, 3 * offset.scale)
             let { target, source } = x
             let txt = linkText[target.id ?? target]
-            // console.log(txt)
+
             if (txt) {
                 target = nodeMap[target]
                 source = nodeMap[source]
-                let c = [lerp(target.x, source.x, .5) - 5, lerp(target.y, source.y, .5)]
+
+                let dr = -1
                 let a = "end"
-                if (c[0] < target.x) {
+                if (source.x < target.x) {
+                    dr = 1
                     a = "start"
-                    c[0] += 10
                 }
-                drawText(c, txt, false, a)
+
+                let c = [lerp(target.x, source.x + 12.5 * dr, .5), lerp(target.y, source.y + 12.5, .5)]
+
+                drawText(c, txt, false, a, "black")
             }
         }
 
@@ -142,16 +157,16 @@ function nodeRender(target, data) {
             if (hNodes.has(x.id)) {
                 drawCircle(center, (nodeSize + nodeSize * .2) * offset.scale, hcolor)
             }
-            if (x.visited) {
-                drawCircle(center, nodeSize * offset.scale, visited)
-            }
-            else if (x.traversed) {
-                drawCircle(center, nodeSize * offset.scale, traversed)
-            }
-            else {
-                drawCircle(center, nodeSize * offset.scale, ncolor)
-            }
+            let color = ncolor
+            if (x.traversed) color = traversed
+            if (x.visited) color = visited
+
+            drawCircle(center, nodeSize * offset.scale, color)
             if (x.label) drawText(center, x.label)
+        }
+        for (const x of staticLabels) {
+            console.log(x)
+            drawText(x[0], x[1], false, "center", "black")
         }
 
         window.requestAnimationFrame(() => {
@@ -177,6 +192,7 @@ function nodeRender(target, data) {
         }
         return v1 * (1 - p) + v2 * p
     }
+
     function getHighlight() {
         return hNodes
     }
@@ -189,21 +205,29 @@ function nodeRender(target, data) {
             delete e.visited
         })
         linkText = {}
+        staticLabels = []
     }
 
     function getNode(id) {
         return nodeMap[id]
     }
 
+    function drawStaticText(txt, pos) {
+        staticLabels.push([pos, String(txt)])
+    }
+
     function addText(target, txt) {
         linkText[target.id ?? target] = txt
+    }
+
+    function getNcount() {
+        return nodes.length
     }
 
     initData(data)
 
     window.addEventListener("resize", updateSize)
     targetCanv.addEventListener("wheel", (event) => {
-        event.preventDefault()
         offset.scale += event.deltaY * -.001
 
         let clamped = Math.min(5, Math.max(offset.scale, .5))
@@ -219,13 +243,14 @@ function nodeRender(target, data) {
         //     offset.x += (x - lerp(x, width/2, .5))/offset.scale
         //     offset.y += (y - lerp(y, height/2, .5))/offset.scale
         // }
-    })
+    }, { passive: true })
     targetCanv.addEventListener("mousedown", (event) => {
         let last
         let original = [offset.x, offset.y]
         dragging = false
         
         const dragger = (event) => {
+            event.preventDefault()
             dragging = true
             target.style.cursor = "grabbing"
 
@@ -257,6 +282,9 @@ function nodeRender(target, data) {
         getHighlight,
         getNode,
         clearExtra,
-        addText
+        addText,
+        getFixedCenter,
+        getNcount,
+        drawStaticText,
     }
 }
