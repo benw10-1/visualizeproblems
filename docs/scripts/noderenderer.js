@@ -57,7 +57,11 @@ function nodeRender(target, data) {
     }
 
     function convertDrawCoord(coord) {
-        return [(coord[0] * offset.scale + offset.x) , (offset.y - coord[1] * offset.scale) ]
+        return [(coord[0] * offset.scale + offset.x) , (offset.y - coord[1] * offset.scale)]
+    }
+
+    function convertScreenCoord(coord) {
+        return [coord[0] * offset.scale + offset.x, -coord[1] * offset.scale + offset.y] 
     }
 
     function initData(data) {
@@ -125,6 +129,14 @@ function nodeRender(target, data) {
         context.fillStyle = "black"
     }
 
+    function offScreen(coord) {
+        let [x, y] = convertScreenCoord(coord)
+        let bar = nodeSize * offset.scale
+        if (x <= -bar || y <= -bar) return true
+        if (x >= width + bar || y >= height + bar) return true
+        return false
+    }
+
     function draw(t) {
         let now = Date.now()
 
@@ -151,16 +163,15 @@ function nodeRender(target, data) {
                 drawText(c, txt, false, a, "black")
             }
         }
-
         for (const x of nodes) {
             let center = [x.x, x.y]
+            if (offScreen(center)) continue
             if (hNodes.has(x.id)) {
                 drawCircle(center, (nodeSize + nodeSize * .2) * offset.scale, hcolor)
             }
             let color = ncolor
             if (x.traversed) color = traversed
             if (x.visited) color = visited
-
             drawCircle(center, nodeSize * offset.scale, color)
             if (x.label) drawText(center, x.label)
         }
@@ -225,7 +236,6 @@ function nodeRender(target, data) {
     }
 
     initData(data)
-
     window.addEventListener("resize", updateSize)
     targetCanv.addEventListener("wheel", (event) => {
         offset.scale += event.deltaY * -.001
@@ -253,7 +263,7 @@ function nodeRender(target, data) {
             event.preventDefault()
             dragging = true
             target.style.cursor = "grabbing"
-
+            // console.log(convertScreenCoord([0, 0]))
             let [x, y] = getMouseActual([event.clientX, event.clientY])
             if (!last) {
                 last = [x, y]
@@ -269,11 +279,13 @@ function nodeRender(target, data) {
 
             targetCanv.removeEventListener("mousemove", dragger)
             targetCanv.removeEventListener("mouseup", enddrag)
+            targetCanv.removeEventListener("mouseleave", enddrag)
             dragging = false
         }
 
         targetCanv.addEventListener("mousemove", dragger)
         targetCanv.addEventListener("mouseup", enddrag)
+        targetCanv.addEventListener("mouseleave", enddrag)
     })
 
     return {
