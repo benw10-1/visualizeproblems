@@ -66,9 +66,6 @@ label {
     transition: all .3s;
     margin: 0 10px;
 }
-/* .search .head-but {
-    white-space: nowrap;
-} */
 .head-but:hover {
     color: #F1FAEE;
     background-color: #1D3557;
@@ -77,6 +74,9 @@ label {
 .head-but.selected {
     color: #F1FAEE;
     background-color: #1D3557;
+}
+button:disabled {
+    opacity: .35;
 }
 
 .slider:hover {
