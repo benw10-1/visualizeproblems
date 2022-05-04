@@ -23,7 +23,8 @@ function nodeRender(target, data) {
     nodeSize = data.nodesize ?? 20,
     hNodes = new Set(),
     linkText = {},
-    staticLabels = []
+    staticLabels = [],
+    linkLabels = true
 
     let ncolor = "red"
     let hcolor = "blue"
@@ -66,6 +67,7 @@ function nodeRender(target, data) {
 
     function initData(data) {
         nodeMap = {}
+        linkText = {}
         nodes = data.nodes ?? []
         links = data.links ?? []
         nodes.forEach(node => {
@@ -78,7 +80,6 @@ function nodeRender(target, data) {
         })
 
         nodeSize = data.nodesize ?? 20
-        // console.log(nodes, links)
     }
 
     function setCenter(x, y) {
@@ -147,9 +148,9 @@ function nodeRender(target, data) {
             let { target, source } = x
             let txt = linkText[target.id ?? target]
 
-            if (txt) {
-                target = nodeMap[target]
-                source = nodeMap[source]
+            if (txt && linkLabels) {
+                target = nodeMap[target.id ?? target]
+                source = nodeMap[source.id ?? source]
 
                 let dr = -1
                 let a = "end"
@@ -157,8 +158,7 @@ function nodeRender(target, data) {
                     dr = 1
                     a = "start"
                 }
-
-                let c = [lerp(target.x, source.x + 12.5 * dr, .5), lerp(target.y, source.y + 12.5, .5)]
+                let c = [lerp(target.x + 5 * dr, source.x, .5), lerp(target.y + 10, source.y + 10, .5)]
 
                 drawText(c, txt, false, a, "black")
             }
@@ -176,7 +176,6 @@ function nodeRender(target, data) {
             if (x.label) drawText(center, x.label)
         }
         for (const x of staticLabels) {
-            console.log(x)
             drawText(x[0], x[1], false, "center", "black")
         }
 
@@ -233,6 +232,10 @@ function nodeRender(target, data) {
 
     function getNcount() {
         return nodes.length
+    }
+
+    function showLabels(state) {
+        linkLabels = state
     }
 
     initData(data)
@@ -298,5 +301,6 @@ function nodeRender(target, data) {
         getFixedCenter,
         getNcount,
         drawStaticText,
+        showLabels
     }
 }
