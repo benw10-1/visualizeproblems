@@ -1,4 +1,4 @@
-var graphEl, slider, searchEl, mode, order, searched, currentTree, ani, renderer, aid
+var graphEl, slider, searchEl, mode, order, searched, currentTree, ani, renderer, aid, options, optionsBut, treeType, traverseType, currentInst, labels
 
 const colorScheme = ["#E63946", "#1D3557", "#A8DADC", "#F1FAEE"]
 const keysExp = /(Backspace)|(Escape)|(Control)|\s/
@@ -23,18 +23,17 @@ const traversers = {
         const helper = (node, val, inst) => {
             if (!node) return false
             inst.push({ flag: "traversed", id: node.val })
-            let res
-            if (val < node.val) res = helper(node.children[0], val, inst)
-            if (val > node.val) res = helper(node.children[1], val, inst)
-            res = res || val === node.val
             inst.push({ flag: "visited", id: node.val })
+            let res = val === node.val
+            if (val < node.val && !res) res = helper(node.children[0], val, inst)
+            if (val > node.val && !res) res = helper(node.children[1], val, inst)
             inst.push({ flag: "returned", id: node.val, res: true })
             return res
         }
         return helper(node, val, inst)
     },
-    "rand": {
-        "in": function (node, val, inst) {
+    "gen": {
+        "In": function (node, val, inst) {
             const helper = (node, val, inst) => {
                 if (!node) return false
                 inst.push({ flag: "traversed", id: node.val })
@@ -69,7 +68,7 @@ const traversers = {
 
             return helper(node, val, inst)
         },
-        "pre": function (node, val, inst) {
+        "Pre": function (node, val, inst) {
             const helper = (node, val, inst) => {
                 if (!node) return false
 
@@ -95,7 +94,7 @@ const traversers = {
 
             return helper(node, val, inst)
         },
-        "post": function (node, val, inst) {
+        "Post": function (node, val, inst) {
             const helper = (node, val, inst) => {
                 if (!node) return false
                 inst.push({ flag: "traversed", id: node.val })
@@ -116,7 +115,7 @@ const traversers = {
 
             return helper(node, val, inst)
         },
-        "level": function (node, val, inst) {
+        "Level": function (node, val, inst) {
             if (!node) return false
 
             let q = [node]
@@ -268,30 +267,13 @@ function genRand(r1, r2) {
     return Math.floor(diff * Math.random() + r1)
 }
 
-function setM(event) {
-    event.target.parentElement.querySelector(".selected").className = "head-but"
-    event.target.classList.add("selected")
-    
-    let [m, o] = document.querySelectorAll(".head-but.selected")
-    if (mode !== m.id) {
-        if (mode === "rand") currentTree = genPerfectBinTree(Number(slider.value))
-        else currentTree = genRandTree(Number(slider.value))
-    }
-    mode =  m.id
-    order = o.id
-
-    aid += 1
-
-    renderer.clearExtra()
-    
-    renderer.setCenter(renderer.getFixedCenter())
-    renderer.initData(renderTree(currentTree))
-}
-
 function searchFor(id, tree) {
     let inst = []
+
     if (mode === "bin") traversers[mode](tree, id, inst)
     else traversers[mode][order](tree, id, inst)
+
+    currentInst = inst
 
     return inst
 }
@@ -299,7 +281,7 @@ function searchFor(id, tree) {
 async function playAni(inst) {
     if (ani) return
     ani = true
-    console.log(inst)
+
     async function delay(ms) {
         return new Promise((res) => {setTimeout(res, ms)})
     }
@@ -311,7 +293,7 @@ async function playAni(inst) {
 
     for (const item of inst) {
         if (aid !== thisi) break
-        let d = 10000/Math.max(0, renderer.getNcount() - 2)
+        let d = 750
         let { flag, id, res } = item
 
         let node = renderer.getNode(id)
@@ -340,10 +322,141 @@ async function playAni(inst) {
     ani = false
 }
 
+function optVisible(vis) {
+    if (!options) return
+    if (vis) options.classList.remove("hidden")
+    else options.classList.add("hidden")
+}
+
+function dropdown(target, ...items) {
+    let dp = document.createElement("div")
+    dp.className = "dropdown"
+
+    let trigger = document.createElement("button")
+    trigger.className = "bt btn-outline-primary dropdown-toggle"
+    trigger.type = "button"
+    trigger.setAttribute("data-toggle", "dropdown")
+    trigger.setAttribute("aria-haspopup", "true")
+    trigger.setAttribute("aria-expanded", "false")
+    dp.appendChild(trigger)
+
+    let menu = document.createElement("button")
+    menu.className = "dropdown-menu"
+    menu.setAttribute("aria-labelledby", "dropdownMenuButton")
+    dp.appendChild(menu)
+
+    let selection = "Select item..."
+    trigger.innerHTML = selection
+
+    let onupdate
+
+    function update() {
+        if (onupdate) onupdate(selection)
+        menu.innerHTML = ""
+
+        items.forEach(x => {
+            if (x === selection) return
+            let item = document.createElement("a")
+            item.className = "dropdown-item"
+            item.innerHTML = x
+
+            item.addEventListener("click", (event) => {
+                select(x)
+            })
+
+            menu.appendChild(item)
+        })
+    }
+
+    function select(opt) {
+        selection = opt
+        trigger.innerHTML = selection
+        update()
+    }
+
+    function getSel() {
+        return selection
+    }
+
+    function onUpdate(func) {
+        onupdate = func
+    }
+
+    function visible(state) {
+        target.className.add("hidden")
+        if (state) target.className.remove("hidden")
+    }
+
+    function disabled(state) {
+        trigger.disabled = state
+    }
+
+    trigger.addEventListener("click", (event) => {
+        update()
+    })
+
+    update()
+
+    target.appendChild(dp)
+
+    return {
+        select,
+        getSel,
+        onUpdate,
+        visible,
+        disabled
+    }
+}
+
 function loadEls() {
+    const treetypes = ["Perfect Binary", "Random Binary"]
+    const traversetypes = ["In", "Post", "Pre", "Level"]
+
     graphEl = document.getElementById("graph")
     slider = document.getElementById("slider")
     searchEl = document.getElementById("searchnum")
+    optionsBut = document.getElementById("options")
+    options = document.getElementsByClassName("options")[0]
+    labels = document.getElementById("returns")
+
+    mode = "bin"
+    order = "in"
+
+    traverseType = document.getElementById("traverseType")
+    traverseType = dropdown(traverseType, ...traversetypes)
+    traverseType.select(traversetypes[0])
+
+    const typeupdater = (selected) => {
+        order = selected
+    }
+    traverseType.onUpdate(typeupdater)
+    typeupdater("In")
+
+    treeType = document.getElementById("treeType")
+    treeType = dropdown(treeType, ...treetypes)
+    treeType.select(treetypes[0])
+
+    const treeupdater = (selected) => {
+        if (selected === "Perfect Binary") {
+            traverseType.disabled(true)
+            traverseType.select("Binary")
+            if (mode === "bin") return
+            currentTree = genPerfectBinTree(Number(slider.value))
+            renderer.initData(renderTree(currentTree))
+            mode = "bin"
+        }
+        else {
+            traverseType.disabled(false)
+            traverseType.select(traversetypes[0])
+            if (mode === "gen") return
+            currentTree = genRandTree(Number(slider.value))
+            renderer.initData(renderTree(currentTree))
+            mode = "gen"
+        }
+    }
+
+    treeType.onUpdate(treeupdater)
+    treeupdater("Perfect Binary")
 
     let searchBut = document.getElementById("searchBut")
     let nodelabel = document.getElementById("nodelabel")
@@ -354,13 +467,18 @@ function loadEls() {
     renderer = nodeRender(graphEl)
     renderer.initData(rendered)
 
-    mode = "bin"
-    order = "in"
+    labels.addEventListener("click", _ => {
+        renderer.showLabels(labels.checked)
+    })
 
     aid = 0
 
     searchEl.value = genRand(1, 16)
 
+    optionsBut.addEventListener("click", (event) => {
+        if (options.classList.contains("hidden")) optVisible(true)
+        else optVisible(false)
+    })
     slider.addEventListener("input", (event) => {
         renderer.clearExtra()
         nodelabel.innerHTML = "Number of nodes: " + slider.value
@@ -375,6 +493,18 @@ function loadEls() {
         let s = searchFor(Number(searchEl.value), currentTree)
         playAni(s)
     })
+    searchEl.addEventListener("keypress", event => {
+        if (event.key === "Enter") {
+            renderer.clearExtra()
+            let s = searchFor(Number(searchEl.value), currentTree)
+            playAni(s)
+        }
+    })
+    window.addEventListener("mousedown", (event) => {
+        for (x of event.composedPath()) {if (x === options) return}
+        if (event.target === optionsBut) return
+        optVisible(false)
+    }) 
 
     nodelabel.innerHTML = "Number of nodes: " + slider.value
 }
