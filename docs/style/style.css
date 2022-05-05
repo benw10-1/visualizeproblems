@@ -122,6 +122,12 @@ input {
 .opt {
     margin-bottom: 10px;
 }
+.disp {
+    width: 20%;
+    white-space: nowrap;
+    font-weight: bolder;
+    font-size: larger;
+}
 .hidden {
     display: none;
 }
