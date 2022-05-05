@@ -54,7 +54,7 @@ function nodeRender(target, data) {
             mouse: [rect.left, rect.top]
         }
         targetCanv.width = rect.width
-        targetCanv.height = rect.width
+        targetCanv.height = rect.height
     }
 
     function convertDrawCoord(coord) {
