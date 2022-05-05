@@ -1,4 +1,4 @@
-var graphEl, slider, searchEl, mode, order, searched, currentTree, ani, renderer, aid, options, optionsBut, treeType, traverseType, currentInst, labels
+var graphEl, slider, searchEl, mode, order, searched, currentTree, ani, renderer, aid, options, optionsBut, treeType, traverseType, currentInst, labels, display
 
 const colorScheme = ["#E63946", "#1D3557", "#A8DADC", "#F1FAEE"]
 const keysExp = /(Backspace)|(Escape)|(Control)|\s/
@@ -136,6 +136,15 @@ const traversers = {
             return res
         }
     }
+}
+
+const txtmap = {
+    "bin": "Perfect Binary",
+    "gen": "Random Binary",
+    "In": "In order",
+    "Pre": "Preorder",
+    "Post": "Postorder",
+    "Level": "Level order",
 }
 
 function genPerfectBinTree(mnodes=15) {
@@ -418,9 +427,10 @@ function loadEls() {
     optionsBut = document.getElementById("options")
     options = document.getElementsByClassName("options")[0]
     labels = document.getElementById("returns")
+    display = document.getElementById("display")
 
     mode = "bin"
-    order = "in"
+    order = "In"
 
     traverseType = document.getElementById("traverseType")
     traverseType = dropdown(traverseType, ...traversetypes)
@@ -428,9 +438,9 @@ function loadEls() {
 
     const typeupdater = (selected) => {
         order = selected
+        display.innerHTML = `${txtmap[mode]} (${txtmap[order] ?? "Binary"})`
     }
     traverseType.onUpdate(typeupdater)
-    typeupdater("In")
 
     treeType = document.getElementById("treeType")
     treeType = dropdown(treeType, ...treetypes)
@@ -453,6 +463,7 @@ function loadEls() {
             renderer.initData(renderTree(currentTree))
             mode = "gen"
         }
+        display.innerHTML = `${txtmap[mode]} (${txtmap[order] ?? "Binary"})`
     }
 
     treeType.onUpdate(treeupdater)
