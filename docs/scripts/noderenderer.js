@@ -1,4 +1,11 @@
-function nodeRender(target, data) {
+class TreeNode {
+    constructor(val = 0, children = []) {
+        this.val = val
+        this.children = children
+    }
+}
+
+function nodeRender(target, { nodes, links, root }={}) {
     let { width, height, top, left } = target.getBoundingClientRect()
     let offset = {
         x: width/2,
@@ -7,29 +14,31 @@ function nodeRender(target, data) {
         mouse: [left, top]
     }
 
-    data = {
-        nodes: [],
-        links: [],
-        ...data
-    }
-
     let targetCanv = document.createElement("canvas")
     targetCanv.width = width
     targetCanv.height = height
     target.appendChild(targetCanv)
 
-    let nodes = [], links = [], nodeMap = {}, 
+    nodes = nodes || []
+    links = links || []
+
+    let nodeMap = {}, 
     context = targetCanv.getContext("2d"), 
-    nodeSize = data.nodesize ?? 20,
+    nodeSize = 20,
     hNodes = new Set(),
     linkText = {},
     staticLabels = [],
-    linkLabels = true
+    linkLabels = true,
+    dragging = false,
+    onNodeHover = () => {},
+    onNodeClick = () => {},
+    ncolor = "red",
+    hcolor = "blue",
+    traversed = "grey",
+    visited = "green",
+    eventsPaused = false
 
-    let ncolor = "red"
-    let hcolor = "blue"
-    let traversed = "grey"
-    let visited = "green"
+    const rowSpace = nodeSize * 3
 
     window.requestAnimationFrame(() => {
         draw(Date.now())
@@ -40,7 +49,7 @@ function nodeRender(target, data) {
     }
 
     function updateSize() {
-        let rect = target.getBoundingClientRect()
+        const rect = target.getBoundingClientRect()
 
         width = rect.width
         height = rect.height
@@ -58,11 +67,11 @@ function nodeRender(target, data) {
     }
 
     function convertDrawCoord(coord) {
-        return [(coord[0] * offset.scale + offset.x) , (offset.y - coord[1] * offset.scale)]
+        return [coord[0] * offset.scale + offset.x, offset.y - coord[1] * offset.scale]
     }
 
     function convertScreenCoord(coord) {
-        return [coord[0] * offset.scale + offset.x, -coord[1] * offset.scale + offset.y] 
+        return [(coord[0] - offset.x) / offset.scale, (coord[1] - offset.y) / offset.scale] 
     }
 
     function initData(data) {
@@ -80,6 +89,84 @@ function nodeRender(target, data) {
         })
 
         nodeSize = data.nodesize ?? 20
+        clearExtra()
+
+        if (data.root) {
+            renderTree(data.root)
+        }
+    }
+
+    function spaceNeeded(treeNode) {
+        function helper(node) {
+            if (!node?.children?.length) return nodeSize * 1.5
+
+            let space = 0
+
+            for (const child of node.children) {
+                let s = helper(child)
+                space += s
+            }
+
+            node.space = space
+            return space
+        }
+
+        return helper(treeNode, null)
+    }
+
+    function renderTree(root) {
+        nodes = []
+        links = []
+        if (root.children === undefined || root.val === undefined) {
+            console.log("Bad tree structure")
+            nodes = []
+            links = []
+            return
+        }
+
+        let maxLevel = 0
+
+        function helper(node, parent, level=0, position=0) {
+            let _n = {
+                id: node.val,
+                label: node.val,
+                y: -(level * rowSpace),
+                x: position
+            }
+            nodes.push(_n)
+            let l
+            if (parent) l = {
+                source: parent.val,
+                target: node.val
+            }
+            if (l) links.push(l)
+            maxLevel = Math.max(maxLevel, level)
+
+            position -= node.space / 2
+            
+            for (const child of node.children) {
+                if (!child) continue
+                helper(child, node, level + 1, position + child.space / 2)
+                position += child.space
+            }
+        }
+        const totalSpace = spaceNeeded(root)
+        helper(root)
+
+        nodes = nodes.map(node => {
+            node.y = (node.y ?? 0) + (maxLevel * rowSpace) / 2
+            node.label = node.label ?? node.id
+            nodeMap[node.id] = node
+
+            return node
+        })
+
+        links = links.map(link => {
+            link.p1 = [nodeMap[link.source].x, nodeMap[link.source].y]
+            link.p2 = [nodeMap[link.target].x, nodeMap[link.target].y]
+
+            return link
+        })
     }
 
     function setCenter(x, y) {
@@ -92,7 +179,7 @@ function nodeRender(target, data) {
 
     function drawCircle(center, r, color) {
         center = convertDrawCoord(center)
-
+        r = r * offset.scale
         context.fillStyle = color
         context.lineWidth = 1
         context.beginPath()
@@ -104,6 +191,7 @@ function nodeRender(target, data) {
     function drawLine(p1, p2, thickness) {
         p1 = convertDrawCoord(p1)
         p2 = convertDrawCoord(p2)
+        thickness = thickness * offset.scale
 
         context.lineWidth = thickness
         context.beginPath()
@@ -131,11 +219,15 @@ function nodeRender(target, data) {
     }
 
     function offScreen(coord) {
-        let [x, y] = convertScreenCoord(coord)
+        let [x, y] = convertDrawCoord(coord)
         let bar = nodeSize * offset.scale
         if (x <= -bar || y <= -bar) return true
         if (x >= width + bar || y >= height + bar) return true
         return false
+    }
+
+    function onHoverNode(func) {
+        onNodeHover = func
     }
 
     function draw(t) {
@@ -144,7 +236,7 @@ function nodeRender(target, data) {
         context.clearRect(0, 0, targetCanv.width, targetCanv.height)
 
         for (const x of links) {
-            drawLine(x.p1, x.p2, 3 * offset.scale)
+            drawLine(x.p1, x.p2, 3)
             let { target, source } = x
             let txt = linkText[target.id ?? target]
 
@@ -167,12 +259,12 @@ function nodeRender(target, data) {
             let center = [x.x, x.y]
             if (offScreen(center)) continue
             if (hNodes.has(x.id)) {
-                drawCircle(center, (nodeSize + nodeSize * .2) * offset.scale, hcolor)
+                drawCircle(center, nodeSize + nodeSize * .2, hcolor)
             }
             let color = ncolor
             if (x.traversed) color = traversed
             if (x.visited) color = visited
-            drawCircle(center, nodeSize * offset.scale, color)
+            drawCircle(center, nodeSize, color)
             if (x.label) drawText(center, x.label)
         }
         for (const x of staticLabels) {
@@ -238,7 +330,26 @@ function nodeRender(target, data) {
         linkLabels = state
     }
 
-    initData(data)
+    function getNodeAt(x, y) {
+        return nodes.reduce((acc, node) => {
+            let [x1, y1] = convertDrawCoord([node.x, node.y])
+            let r = nodeSize * offset.scale
+            if (x >= x1 - r && x <= x1 + r && y >= y1 - r && y <= y1 + r) {
+                return node
+            }
+            return acc
+        }, null)
+    }
+
+    function onClickNode(func) {
+        onNodeClick = func
+    }
+
+    function pauseEvents(paused) {
+        eventsPaused = paused
+    }
+
+    initData({ nodes, links, root })
     window.addEventListener("resize", updateSize)
     targetCanv.addEventListener("wheel", (event) => {
         offset.scale += event.deltaY * -.001
@@ -249,13 +360,10 @@ function nodeRender(target, data) {
             return
         }
         offset.scale = clamped
-        
-        // if (event.deltaY < 0) {
-        //     let [x, y] = getMouseActual([event.clientX, event.clientY])
-        //     console.log(x, lerp(x, width/2, .5))
-        //     offset.x += (x - lerp(x, width/2, .5))/offset.scale
-        //     offset.y += (y - lerp(y, height/2, .5))/offset.scale
-        // }
+        let [x, y] = convertScreenCoord(getMouseActual([event.clientX, event.clientY]))
+        // let converted = convertDrawCoord([x, y])
+        // console.log(converted)
+        // // let 
     }, { passive: true })
     targetCanv.addEventListener("mousedown", (event) => {
         let last
@@ -278,7 +386,14 @@ function nodeRender(target, data) {
         }
 
         const enddrag = (event) => {
-            target.style.cursor = "inherit"
+            if (!dragging && !eventsPaused) {
+                let [x, y] = getMouseActual([event.clientX, event.clientY])
+                let node = getNodeAt(x, y)
+                onNodeClick(node)
+            }
+            else {
+                target.style.cursor = "inherit"
+            }
 
             targetCanv.removeEventListener("mousemove", dragger)
             targetCanv.removeEventListener("mouseup", enddrag)
@@ -290,6 +405,15 @@ function nodeRender(target, data) {
         targetCanv.addEventListener("mouseup", enddrag)
         targetCanv.addEventListener("mouseleave", enddrag)
     })
+    targetCanv.addEventListener("mousemove", (event) => {
+        if (dragging || eventsPaused) return
+        let [x, y] = getMouseActual([event.clientX, event.clientY])
+
+        if (onNodeHover) {
+            let node = getNodeAt(x, y)
+            onNodeHover(node)
+        }
+    })    
 
     return {
         setCenter,
@@ -301,6 +425,9 @@ function nodeRender(target, data) {
         getFixedCenter,
         getNcount,
         drawStaticText,
-        showLabels
+        showLabels,
+        onHoverNode,
+        onClickNode,
+        pauseEvents
     }
 }
