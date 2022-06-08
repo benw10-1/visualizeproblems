@@ -314,8 +314,12 @@ function nodeRender(target, { nodes, links, root }={}) {
         return nodeMap[id]
     }
 
-    function drawStaticText(txt, pos) {
+    function drawStaticText(pos, txt) {
         staticLabels.push([pos, String(txt)])
+    }
+
+    function getNodeSize() {
+        return nodeSize
     }
 
     function addText(target, txt) {
@@ -428,6 +432,7 @@ function nodeRender(target, { nodes, links, root }={}) {
         showLabels,
         onHoverNode,
         onClickNode,
-        pauseEvents
+        pauseEvents,
+        getNodeSize
     }
 }

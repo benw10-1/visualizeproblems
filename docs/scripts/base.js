@@ -220,9 +220,11 @@ async function playAni(inst) {
     graphEl.style.cursor = "initial"
     renderer.pauseEvents(true)
 
+    const first = inst[0] ?? null
+
     for (const item of inst) {
         if (aid !== thisi) break
-        let d = Math.max(750 - inst.length * 4, 20)
+        let d = Math.max(1000 - inst.length * 6, 20)
         let { flag, id, res } = item
 
         let node = renderer.getNode(id)
@@ -235,7 +237,12 @@ async function playAni(inst) {
                 break;
             case "returned":
                 d = 0
-                renderer.addText(id, String(res))
+                if (first.id !== id) renderer.addText(id, String(res))
+                else {
+                    let { x, y } = renderer.getNode(id)
+                    console.log(x, y)
+                    renderer.drawStaticText([x, y + renderer.getNodeSize() * 1.75], String(res))
+                }
                 break;
             case "traversed":
                 d = 0
