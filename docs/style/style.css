@@ -124,11 +124,16 @@ input {
 }
 .disp {
     width: 20%;
+    min-width: 350px;
     white-space: nowrap;
     font-weight: bolder;
     font-size: larger;
+    text-align: center;
 }
 .hidden {
     display: none;
+}
+#nodelabel {
+    width: 200px;
 }
   

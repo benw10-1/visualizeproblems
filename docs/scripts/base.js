@@ -3,21 +3,6 @@ var graphEl, slider, searchEl, mode, order, searched, currentTree, ani, renderer
 const colorScheme = ["#E63946", "#1D3557", "#A8DADC", "#F1FAEE"]
 const keysExp = /(Backspace)|(Escape)|(Control)|\s/
 
-class TreeNode {
-    constructor(val = 0, children = []) {
-        this.val = val
-        this.children = children
-    }
-}
-
-class BinaryTreeNode {
-    constructor(val=0, left, right) {
-        this.val = val
-        this.left = left
-        this.right = right
-    }
-}
-
 const traversers = {
     "bin": function (node, val, inst) {
         const helper = (node, val, inst) => {
@@ -45,7 +30,7 @@ const traversers = {
                 for (const x of node.children) {
                     let r = helper(x, val, inst)
                     i++
-                    if (!vs && i >= node.children.length/2) {
+                    if (!vs && i >= node.children.length / 2) {
                         vs = true
                         inst.push({ flag: "visited", id: node.val })
                         if (node.val === val) {
@@ -147,14 +132,14 @@ const txtmap = {
     "Level": "Level order",
 }
 
-function genPerfectBinTree(mnodes=15) {
+function genPerfectBinTree(mnodes = 15) {
     // [1, 2, 3, 4, ..mnodes]
     let ns = Array(mnodes).fill(1).map((x, y) => x + y)
 
     const gentree = (low, high) => {
         if (low > high) return
-        
-        let mid = Math.floor((low + high)/2)
+
+        let mid = Math.floor((low + high) / 2)
 
         let root = new TreeNode(ns[mid])
 
@@ -172,13 +157,13 @@ function genPerfectBinTree(mnodes=15) {
 function removeAndShift(arr, index) {
     if (!arr[index]) return
 
-    for (let i = index; i < arr.length; i++) arr[i] = arr[i+1]
+    for (let i = index; i < arr.length; i++) arr[i] = arr[i + 1]
 
     arr.pop()
 }
 
 // change to real random tree not just values
-function genRandTree(mnodes=15) {
+function genRandTree(mnodes = 15) {
     let ns = Array(mnodes).fill(1)
     // constantly increasing unique random values
     for (let i = 1; i < ns.length; i++) ns[i] = ns[i - 1] + genRand(1, 10)
@@ -187,8 +172,8 @@ function genRandTree(mnodes=15) {
     ns = ns.map((x) => ({ x, sval: Math.random() })).sort((v1, v2) => v1.sval - v2.sval).map((x) => x.x).slice(0, mnodes)
     const gentree = (low, high) => {
         if (low > high) return
-        
-        let mid = Math.floor((low + high)/2)
+
+        let mid = Math.floor((low + high) / 2)
 
         let root = new TreeNode(ns[mid])
 
@@ -199,76 +184,8 @@ function genRandTree(mnodes=15) {
 
         return root
     }
-    
+
     return gentree(0, ns.length - 1)
-}
-
-function renderTree(root) {
-    if (!root) return
-    
-    let nodes = []
-    let links = []
-    let size = 40
-    let leveldiff = size * 2
-    let maxlevel = -1
-    let nodeMap = {}
-
-    // get space needed per node and level info
-    function helper(node, level, parent) {
-        let n = {
-            id: node.val,
-            label: node.val,
-            y: -level * leveldiff
-        }
-        nodeMap[n.id] = n
-        let space = 0
-        for (const x of node.children) {
-            if (!x) {
-                space += size
-                continue
-            }
-            let s = helper(x, level + 1, node)
-            space += (s === 0 ? size : s)
-        }
-        node.space = space
-        node.level = level
-
-        nodes.push(n)
-        if (parent) links.push({
-            source: parent.val,
-            target: node.val
-        })
-
-        maxlevel = Math.max(level, maxlevel)
-        return space
-    }
-
-    function second(node, offset) {
-        nodeMap[node.val].x = offset
-        nodeMap[node.val].y = nodeMap[node.val].y + (maxlevel * leveldiff)/2
-
-        let space = node.space
-        let place = offset - space / node.children.length
-
-        for (let x of node.children) {
-            if (!x) {
-                place = place + space
-                continue
-            }
-            second(x, place)
-            place = place + space
-            space -= x.space/2
-        }
-    }
-
-    root.space = helper(root, 0, false)
-
-    second(root, 0)
-
-    return {
-        nodes: nodes,
-        links: links
-    }
 }
 
 function genRand(r1, r2) {
@@ -292,22 +209,27 @@ async function playAni(inst) {
     ani = true
 
     async function delay(ms) {
-        return new Promise((res) => {setTimeout(res, ms)})
+        return new Promise((res) => { setTimeout(res, ms) })
     }
 
     aid += 1
-    let thisi = aid
+    const thisi = aid
 
+    renderer.clearExtra()
     let hnodes = renderer.getHighlight()
+    graphEl.style.cursor = "initial"
+    renderer.pauseEvents(true)
+
+    const first = inst[0] ?? null
 
     for (const item of inst) {
         if (aid !== thisi) break
-        let d = 750
+        let d = Math.max(1000 - inst.length * 6, 20)
         let { flag, id, res } = item
 
         let node = renderer.getNode(id)
 
-        switch(flag) {
+        switch (flag) {
             case "visited":
                 hnodes.clear()
                 hnodes.add(id)
@@ -315,7 +237,12 @@ async function playAni(inst) {
                 break;
             case "returned":
                 d = 0
-                renderer.addText(id, String(res))
+                if (first.id !== id) renderer.addText(id, String(res))
+                else {
+                    let { x, y } = renderer.getNode(id)
+                    console.log(x, y)
+                    renderer.drawStaticText([x, y + renderer.getNodeSize() * 1.75], String(res))
+                }
                 break;
             case "traversed":
                 d = 0
@@ -325,9 +252,11 @@ async function playAni(inst) {
                 break;
         }
 
-        await delay(d)
+        if (d > 0) await delay(d)
     }
+    if (aid !== thisi) return
     hnodes.clear()
+    renderer.pauseEvents(false)
     ani = false
 }
 
@@ -452,7 +381,7 @@ function loadEls() {
             traverseType.select("Binary")
             if (mode === "bin") return
             currentTree = genPerfectBinTree(Number(slider.value))
-            renderer.initData(renderTree(currentTree))
+            renderer.initData({ root: currentTree})
             mode = "bin"
         }
         else {
@@ -460,7 +389,7 @@ function loadEls() {
             traverseType.select(traversetypes[0])
             if (mode === "gen") return
             currentTree = genRandTree(Number(slider.value))
-            renderer.initData(renderTree(currentTree))
+            renderer.initData({ root: currentTree })
             mode = "gen"
         }
         display.innerHTML = `${txtmap[mode]} (${txtmap[order] ?? "Binary"})`
@@ -474,9 +403,21 @@ function loadEls() {
 
     let perf = genPerfectBinTree()
     currentTree = perf
-    let rendered = renderTree(perf)
+    // let rendered = renderTree(perf)
     renderer = nodeRender(graphEl)
-    renderer.initData(rendered)
+    renderer.initData({ root: perf })
+    let highlights = renderer.getHighlight()
+    renderer.onHoverNode((node) => {
+        highlights.clear()
+        if (node) highlights.add(node.id)
+        graphEl.style.cursor = node ? "pointer" : "default"
+    })
+    renderer.onClickNode((node) => {
+        if (!node) return
+        const inst = searchFor(node.id, currentTree)
+        if (inst.length === 0) return
+        playAni(inst)
+    })
 
     labels.addEventListener("click", _ => {
         renderer.showLabels(labels.checked)
@@ -497,7 +438,7 @@ function loadEls() {
         if (mode === "bin") currentTree = genPerfectBinTree(Number(slider.value))
         else currentTree = genRandTree(Number(slider.value))
 
-        renderer.initData(renderTree(currentTree))
+        renderer.initData({ root: currentTree})
     })
     searchBut.addEventListener("click", (event) => {
         renderer.clearExtra()
@@ -512,15 +453,15 @@ function loadEls() {
         }
     })
     window.addEventListener("mousedown", (event) => {
-        for (x of event.composedPath()) {if (x === options) return}
+        for (x of event.composedPath()) { if (x === options) return }
         if (event.target === optionsBut) return
         optVisible(false)
-    }) 
+    })
 
     nodelabel.innerHTML = "Number of nodes: " + slider.value
 }
 
-function log(text, error, tm=1000) {
+function log(text, error, tm = 1000) {
     return
     logger.classList.remove("red")
     if (error) logger.classList.add("red")
