@@ -98,11 +98,15 @@ function nodeRender(target, { nodes, links, root }={}) {
 
     function spaceNeeded(treeNode) {
         function helper(node) {
-            if (!node?.children?.length) return nodeSize * 1.5
+            if (!node.children.length) {
+                node.space = nodeSize * 2.25
+                return nodeSize * 2.25
+            }
 
             let space = 0
 
             for (const child of node.children) {
+                if (!child) continue
                 let s = helper(child)
                 space += s
             }
@@ -146,8 +150,9 @@ function nodeRender(target, { nodes, links, root }={}) {
             
             for (const child of node.children) {
                 if (!child) continue
-                helper(child, node, level + 1, position + child.space / 2)
-                position += child.space
+                const res_ = child?.space
+                helper(child, node, level + 1, position + res_ / 2)
+                position += res_
             }
         }
         const totalSpace = spaceNeeded(root)
@@ -167,6 +172,8 @@ function nodeRender(target, { nodes, links, root }={}) {
 
             return link
         })
+        console.log(nodes)
+        console.log(links)
     }
 
     function setCenter(x, y) {

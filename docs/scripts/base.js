@@ -231,6 +231,7 @@ async function playAni(inst) {
 
         switch (flag) {
             case "visited":
+                console.log("visited", id)
                 hnodes.clear()
                 hnodes.add(id)
                 node.visited = true
@@ -240,7 +241,7 @@ async function playAni(inst) {
                 if (first.id !== id) renderer.addText(id, String(res))
                 else {
                     let { x, y } = renderer.getNode(id)
-                    console.log(x, y)
+
                     renderer.drawStaticText([x, y + renderer.getNodeSize() * 1.75], String(res))
                 }
                 break;
